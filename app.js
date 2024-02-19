@@ -358,6 +358,109 @@
  * 
  */
 
+// const http = require("http");
+// const urlModule = require("url");
+
+// // Initialize dictionary as an array to store word-definition objects
+// let dictionary = [];
+// let totalRequests = 0; // Counter for total number of requests
+
+// const server = http.createServer((req, res) => {
+//   totalRequests++; // Increment total requests on each call
+
+//   // Set CORS headers to ensure cross-origin requests are handled
+//   res.setHeader("Access-Control-Allow-Origin", "*");
+//   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+//   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+//   // Respond to preflight OPTIONS requests by confirming that the requested methods are allowed
+//   // Chat Gpt provided this code
+//   if (req.method === "OPTIONS") {
+//     res.writeHead(204);
+//     res.end();
+//     return;
+//   }
+
+//   // Extract the method and URL from the request
+//   const { method, url } = req;
+
+//   // Parse the URL to get query parameters and pathname
+//   const parsedUrl = urlModule.parse(url, true);
+//   const pathname = parsedUrl.pathname;
+
+//   // Process GET and POST requests on "/api/definitions" path
+//   if (pathname === "/api/definitions") {
+
+//     // Handle GET requests to fetch a word's definition
+//     if (method === "GET") {
+//       const { word } = parsedUrl.query; // Extract the word being searched for
+//       const entry = dictionary.find((entry) => entry.word === word); // Find the entry in the dictionary
+//       res.writeHead(200, { "Content-Type": "application/json" });
+//       if (entry) {
+//         // If the word is found, return the word and its definition
+//         res.end(JSON.stringify({ word: entry.word, definition: entry.definition, totalRequests, totalEntries: dictionary.length }));
+//       } else {
+//         // If not found, inform the requester that the word was not found
+//         res.end(JSON.stringify({ error: "Word not found", totalRequests, totalEntries: dictionary.length }));
+//       }
+//     }
+
+//       // Handle POST requests to add a new word and its definition 
+//     else if (method === "POST") {
+//       let body = "";
+//       req.on("data", (chunk) => {
+//         // Collect data chunks into the body
+//         body += chunk.toString();
+//       });
+//       req.on("end", () => {
+//         // Once all data is received, try to parse it as JSON
+//         try {
+//           const { word, definition } = JSON.parse(body);
+//           // Validate the inputs
+//           if (!word || typeof word !== "string" || !definition || typeof definition !== "string") {
+//             res.writeHead(400, { "Content-Type": "application/json" });
+//             res.end(JSON.stringify({ error: "Invalid input. Both word and definition must be strings." }));
+//             return;
+//           }
+//           // Check if the word already exists
+//           if (dictionary.some((entry) => entry.word === word)) {
+//             res.writeHead(409, { "Content-Type": "application/json" });
+//             res.end(JSON.stringify({ error: `The word '${word}' already exists.`, totalRequests, totalEntries: dictionary.length }));
+//           } else {
+//             // Add the new word and definition to the dictionary
+//             dictionary.push({ word, definition });
+//             res.writeHead(201, { "Content-Type": "application/json" });
+//             res.end(JSON.stringify({
+//               message: `Word '${word}' added successfully.`,
+//               totalRequests,
+//               totalEntries: dictionary.length
+//             }));
+//           }
+//         } catch (e) {
+//           // Handle JSON parsing errors
+//           res.writeHead(400, { "Content-Type": "application/json" });
+//           res.end(JSON.stringify({ error: "Bad request. Unable to parse JSON." }));
+//         }
+//       });
+//     } else {
+//         // Respond with 405 Method Not Allowed if any other method is used
+//       res.writeHead(405, { "Content-Type": "application/json" });
+//       res.end(JSON.stringify({ error: "Method not allowed" }));
+//     }
+//   } else {
+//     // Respond with 404 Not Found if the path does not match "/api/definitions"
+//     res.writeHead(404, { "Content-Type": "application/json" });
+//     res.end(JSON.stringify({ error: "Not Found" }));
+//   }
+// });
+
+// // Start the server on the specified port from heroku or 8083 if not specified
+// const PORT = process.env.PORT || 8083;
+// server.listen(PORT, () => {
+//   console.log(`Server is running on http://localhost:${PORT}`);
+// });
+
+
 const http = require("http");
 const urlModule = require("url");
 
@@ -374,7 +477,6 @@ const server = http.createServer((req, res) => {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
   // Respond to preflight OPTIONS requests by confirming that the requested methods are allowed
-  // Chat Gpt provided this code
   if (req.method === "OPTIONS") {
     res.writeHead(204);
     res.end();
@@ -390,9 +492,8 @@ const server = http.createServer((req, res) => {
 
   // Process GET and POST requests on "/api/definitions" path
   if (pathname === "/api/definitions") {
-
-    // Handle GET requests to fetch a word's definition
     if (method === "GET") {
+      // Handle GET requests to fetch a word's definition
       const { word } = parsedUrl.query; // Extract the word being searched for
       const entry = dictionary.find((entry) => entry.word === word); // Find the entry in the dictionary
       res.writeHead(200, { "Content-Type": "application/json" });
@@ -403,10 +504,8 @@ const server = http.createServer((req, res) => {
         // If not found, inform the requester that the word was not found
         res.end(JSON.stringify({ error: "Word not found", totalRequests, totalEntries: dictionary.length }));
       }
-    }
-
+    } else if (method === "POST") {
       // Handle POST requests to add a new word and its definition 
-    else if (method === "POST") {
       let body = "";
       req.on("data", (chunk) => {
         // Collect data chunks into the body
@@ -443,22 +542,51 @@ const server = http.createServer((req, res) => {
         }
       });
     } else {
-        // Respond with 405 Method Not Allowed if any other method is used
+      // Respond with 405 Method Not Allowed if any other method is used
       res.writeHead(405, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: "Method not allowed" }));
     }
+  } else if (pathname === "/api/counts" && method === "GET") {
+    // Return counts of words, definitions, and list of words and definitions
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ totalWords: dictionary.length, totalDefinitions: countTotalDefinitions(), words: getWords(), definitions: getDefinitions() }));
   } else {
-    // Respond with 404 Not Found if the path does not match "/api/definitions"
+    // Respond with 404 Not Found for unknown paths
     res.writeHead(404, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ error: "Not Found" }));
   }
 });
 
+// Function to count total definitions in the dictionary
+function countTotalDefinitions() {
+  let total = 0;
+  dictionary.forEach(entry => {
+    if (entry.definition) {
+      total++;
+    }
+  });
+  return total;
+}
+
+// Function to get a list of words
+function getWords() {
+  return dictionary.map(entry => entry.word);
+}
+
+// Function to get a list of definitions
+function getDefinitions() {
+  return dictionary.filter(entry => entry.definition).map(entry => entry.definition);
+}
+
 // Start the server on the specified port from heroku or 8083 if not specified
 const PORT = process.env.PORT || 8083;
 server.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
+
+  // Log all words and their definitions stored in the dictionary
+  console.log("All words and definitions stored in the dictionary:");
+  dictionary.forEach(entry => {
+    console.log(`Word: ${entry.word}, Definition: ${entry.definition}`);
+  });
 });
-
-
 
